@@ -2,9 +2,7 @@ package natswrapper
 
 import "time"
 
-const defaultAckWait = 10 * time.Second
-
-type Config struct {
+type ConnectionConfig struct {
 	Host                string
 	Port                int
 	Name                string
@@ -13,34 +11,49 @@ type Config struct {
 	TLSConfigCa         string
 	TLSClientCert       string
 	TLSClientKey        string
-	Stream              string
-	Subject             string
-	Consumer            string
-	DLQStream           string
-	DLQSubject          string
 	ConnectTimeout      time.Duration
-	OperationTimeout    time.Duration
 	ReconnectAttempts   int
 	ReconnectInterval   time.Duration
 	ReconnectBufferSize int
-	NakDelay            time.Duration
-	MaxDeliver          int
-	AckWait             time.Duration
 	OnClosed            func(error)
 }
 
-func (c *Config) consumerName() string {
-	if c.Consumer != "" {
-		return c.Consumer
-	}
-
-	return c.Stream
+type JetStreamConfig struct {
+	Connection       ConnectionConfig
+	OperationTimeout time.Duration
 }
 
-func (c *Config) ackWait() time.Duration {
-	if c.AckWait > 0 {
-		return c.AckWait
-	}
+type StreamConfig struct {
+	Name     string
+	Subjects []string
+}
 
-	return defaultAckWait
+type PullConsumerConfig struct {
+	JetStream  JetStreamConfig
+	Stream     string
+	Consumer   string
+	DLQSubject string
+	NakDelay   time.Duration
+	MaxDeliver int
+}
+
+type StreamPublisherConfig struct {
+	JetStream JetStreamConfig
+}
+
+type ProvisionerConfig struct {
+	JetStream JetStreamConfig
+	Streams   []StreamProvisionConfig
+}
+
+type StreamProvisionConfig struct {
+	Stream    StreamConfig
+	DLQ       *StreamConfig
+	Consumers []ConsumerProvisionConfig
+}
+
+type ConsumerProvisionConfig struct {
+	Durable    string
+	MaxDeliver int
+	AckWait    time.Duration
 }

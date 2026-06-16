@@ -18,7 +18,7 @@ type PullConsumer interface {
 }
 
 type pullConsumer struct {
-	cfg        *Config
+	cfg        PullConsumerConfig
 	connection *jetStreamConnection
 	consumer   jetstream.Consumer
 	messages   jetstream.MessagesContext
@@ -26,10 +26,10 @@ type pullConsumer struct {
 	logger     *zap.Logger
 }
 
-func NewPullConsumer(cfg *Config, logger *zap.Logger) (PullConsumer, error) {
+func NewPullConsumer(cfg PullConsumerConfig, logger *zap.Logger) (PullConsumer, error) {
 	ctx := context.Background()
 
-	connection, err := newJetStreamConnection(ctx, cfg, logger)
+	connection, err := newJetStreamConnection(ctx, cfg.JetStream, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func NewPullConsumer(cfg *Config, logger *zap.Logger) (PullConsumer, error) {
 	requestCtx, cancel := connection.operationContext(ctx)
 	defer cancel()
 
-	consumer, err := connection.js.Consumer(requestCtx, cfg.Stream, cfg.consumerName())
+	consumer, err := connection.js.Consumer(requestCtx, cfg.Stream, cfg.Consumer)
 	if err != nil {
 		_ = connection.Close()
 

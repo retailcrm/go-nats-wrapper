@@ -25,10 +25,10 @@ type streamPublisher struct {
 	connection *jetStreamConnection
 }
 
-func NewStreamPublisher(cfg *Config, logger *zap.Logger) (StreamPublisher, error) {
+func NewStreamPublisher(cfg StreamPublisherConfig, logger *zap.Logger) (StreamPublisher, error) {
 	ctx := context.Background()
 
-	connection, err := newJetStreamConnection(ctx, cfg, logger)
+	connection, err := newJetStreamConnection(ctx, cfg.JetStream, logger)
 	if err != nil {
 		return nil, err
 	}

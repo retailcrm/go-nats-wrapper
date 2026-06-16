@@ -1,0 +1,149 @@
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+version: "2"
+
+run:
+    timeout: 5m
+
+linters:
+    default: none
+    enable:
+        # Общие линтеры кода
+        - gocritic
+        - staticcheck
+        - unused
+        # Линтеры по ошибка
+        - errcheck
+        - errorlint
+        - errname
+    settings:
+        gocritic:
+            settings:
+                hugeParam:
+                    sizeThreshold: 1024
+                rangeValCopy:
+                    sizeThreshold: 1024
+            disable-all: true
+            enabled-checks:
+                - appendAssign
+                - appendCombine
+                - argOrder
+                - assignOp
+                - badCall
+                - badCond
+                - badLock
+                - badRegexp
+                - badSorting
+                - badSyncOnceFunc
+                - boolExprSimplify
+                - builtinShadow
+                - builtinShadowDecl
+                - captLocal
+                - caseOrder
+                - codegenComment
+                - commentFormatting
+                - commentedOutCode
+                - commentedOutImport
+                - defaultCaseOrder
+                - deferInLoop
+                - deferUnlambda
+                - deprecatedComment
+                - docStub
+                - dupArg
+                - dupBranchBody
+                - dupCase
+                - dupImport
+                - dupSubExpr
+                - dynamicFmtString
+                - elseif
+                - emptyDecl
+                - emptyFallthrough
+                - emptyStringTest
+                - equalFold
+                - evalOrder
+                - exitAfterDefer
+                - exposedSyncMutex
+                - externalErrorReassign
+                - filepathJoin
+                - flagDeref
+                - flagName
+                - hexLiteral
+                - httpNoBody
+                - hugeParam
+                - ifElseChain
+                # - importShadow Detects when imported package names shadowed in the assignments
+                - indexAlloc
+                - initClause
+                - mapKey
+                - methodExprCall
+                - nestingReduce
+                - newDeref
+                - nilValReturn
+                - octalLiteral
+                - offBy1
+                # - paramTypeCombine Detects if function parameters could be combined by type and suggest the way to do it.
+                - preferDecodeRune
+                - preferFilepathJoin
+                - preferFprint
+                - preferStringWriter
+                - preferWriteByte
+                - ptrToRefParam
+                - rangeAppendAll
+                - rangeExprCopy
+                - rangeValCopy
+                - redundantSprint
+                - regexpMust
+                - regexpPattern
+                - regexpSimplify
+                - returnAfterHttpError
+                # - ruleguard Runs user-defined rules using ruleguard linter.
+                - singleCaseSwitch
+                - sliceClear
+                - sloppyLen
+                # - sloppyReassign Detects suspicious/confusing re-assignments.
+                - sloppyTypeAssert
+                - sortSlice
+                - sprintfQuotedString
+                - sqlQuery
+                - stringConcatSimplify
+                - stringXbytes
+                - stringsCompare
+                - switchTrue
+                - syncMapLoadAndDelete
+                - timeExprSimplify
+                - todoCommentWithoutDetail
+                - tooManyResultsChecker
+                - truncateCmp
+                - typeAssertChain
+                # - typeDefFirst Detects method declarations preceding the type definition itself (removed due to gqlgen)
+                - typeSwitchVar
+                - typeUnparen
+                - uncheckedInlineErr
+                - underef
+                - unlabelStmt
+                - unlambda
+                # - unnamedResult Detects unnamed results that may benefit from names.
+                # - unnecessaryBlock Detects unnecessary braced statement blocks.
+                - unnecessaryDefer
+                - unslice
+                - valSwap
+                - weakCond
+                - whyNoLint
+                - wrapperFunc
+                - yodaStyleExpr
+        staticcheck:
+            checks: ["all", "-ST1000", "-ST1003", '-SA1029']
+        
+        errcheck:
+            check-type-assertions: false
+            check-blank: false
+        errorlint:
+            errorf: true
+            errorf-multi: true
+            asserts: true
+            comparison: true
+        unused:
+            exported-fields-are-used: false
+
+issues:
+    max-issues-per-linter: 1000
+    max-same-issues: 1000

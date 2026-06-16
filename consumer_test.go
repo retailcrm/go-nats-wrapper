@@ -51,12 +51,11 @@ func TestPullConsumerNack(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			publisher := &testDLQPublisher{}
 			consumer := &pullConsumer{
-				cfg: &Config{
-					Stream:           "events_stream",
-					DLQSubject:       "events.dlq",
-					OperationTimeout: time.Second,
-					NakDelay:         time.Minute,
-					MaxDeliver:       3,
+				cfg: PullConsumerConfig{
+					Stream:     "events_stream",
+					DLQSubject: "events.dlq",
+					NakDelay:   time.Minute,
+					MaxDeliver: 3,
 				},
 				publisher: publisher,
 				logger:    zap.NewNop(),
@@ -90,12 +89,11 @@ func TestPullConsumerNackDoesNotAcknowledgeMessageWhenDLQPublishFails(t *testing
 	publishErr := errors.New("dlq unavailable")
 	publisher := &testDLQPublisher{err: publishErr}
 	consumer := &pullConsumer{
-		cfg: &Config{
-			Stream:           "events_stream",
-			DLQSubject:       "events.dlq",
-			OperationTimeout: time.Second,
-			NakDelay:         time.Minute,
-			MaxDeliver:       3,
+		cfg: PullConsumerConfig{
+			Stream:     "events_stream",
+			DLQSubject: "events.dlq",
+			NakDelay:   time.Minute,
+			MaxDeliver: 3,
 		},
 		publisher: publisher,
 		logger:    zap.NewNop(),

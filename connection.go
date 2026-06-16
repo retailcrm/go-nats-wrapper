@@ -13,7 +13,7 @@ import (
 )
 
 type jetStreamConnection struct {
-	cfg     *Config
+	cfg     JetStreamConfig
 	nc      *natsdriver.Conn
 	js      jetstream.JetStream
 	closing *atomic.Bool
@@ -21,12 +21,12 @@ type jetStreamConnection struct {
 
 func newJetStreamConnection(
 	ctx context.Context,
-	cfg *Config,
+	cfg JetStreamConfig,
 	logger *zap.Logger,
 ) (*jetStreamConnection, error) {
 	closing := &atomic.Bool{}
 
-	nc, err := connect(ctx, cfg, logger, closing)
+	nc, err := connect(ctx, cfg.Connection, logger, closing)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (c *jetStreamConnection) Close() error {
 
 func connect(
 	ctx context.Context,
-	cfg *Config,
+	cfg ConnectionConfig,
 	logger *zap.Logger,
 	closing *atomic.Bool,
 ) (*natsdriver.Conn, error) {
@@ -103,12 +103,12 @@ func connect(
 	return nc, nil
 }
 
-func serverURL(cfg *Config) string {
+func serverURL(cfg ConnectionConfig) string {
 	return fmt.Sprintf("nats://%s:%d", cfg.Host, cfg.Port)
 }
 
 func connectOptions(
-	cfg *Config,
+	cfg ConnectionConfig,
 	logger *zap.Logger,
 	signalConnected func(),
 	signalClosed func(),
@@ -120,25 +120,35 @@ func connectOptions(
 	}
 
 	options := []natsdriver.Option{
+		// Client name visible in NATS monitoring and server logs.
 		natsdriver.Name(cfg.Name),
+		// Timeout for a single TCP connection attempt.
 		natsdriver.Timeout(cfg.ConnectTimeout),
+		// Allows the client to enter reconnecting state if the first connection fails.
 		natsdriver.RetryOnFailedConnect(true),
+		// Limits reconnect attempts for the initial connection and later reconnects.
 		natsdriver.MaxReconnects(cfg.ReconnectAttempts),
+		// Delay between reconnect attempts.
 		natsdriver.ReconnectWait(cfg.ReconnectInterval),
+		// Signals successful initial connection, including after RetryOnFailedConnect.
 		natsdriver.ConnectHandler(func(_ *natsdriver.Conn) {
 			signalConnected()
 		}),
+		// Logs connection loss after an established connection was interrupted.
 		natsdriver.DisconnectErrHandler(func(_ *natsdriver.Conn, err error) {
 			if err != nil {
 				logger.Warn("disconnected from nats", zap.Error(err))
 			}
 		}),
+		// Logs each failed reconnect attempt.
 		natsdriver.ReconnectErrHandler(func(_ *natsdriver.Conn, err error) {
 			logger.Warn("failed to reconnect to nats", zap.Error(err))
 		}),
+		// Logs successful reconnects.
 		natsdriver.ReconnectHandler(func(conn *natsdriver.Conn) {
 			logger.Info("reconnected to nats", zap.String("url", conn.ConnectedUrl()))
 		}),
+		// Logs final connection close after reconnect attempts are exhausted or Close is called.
 		natsdriver.ClosedHandler(func(conn *natsdriver.Conn) {
 			signalClosed()
 			err := conn.LastError()
@@ -151,8 +161,10 @@ func connectOptions(
 				err = natsdriver.ErrConnectionClosed
 			}
 
+			// убиваем процессы, если реконнект не принес результат
 			cfg.OnClosed(fmt.Errorf("nats connection closed: %w", err))
 		}),
+		// Limits outbound messages buffered by the client while reconnecting.
 		natsdriver.ReconnectBufSize(cfg.ReconnectBufferSize),
 	}
 

@@ -24,7 +24,7 @@ func TestConnectOptions(t *testing.T) {
 
 	dataProvider := []struct {
 		name     string
-		cfg      *Config
+		cfg      ConnectionConfig
 		wantUser string
 		wantTLS  bool
 		wantCert bool
@@ -35,7 +35,7 @@ func TestConnectOptions(t *testing.T) {
 		},
 		{
 			name: "enables authenticated mutual tls from certificate files",
-			cfg: func() *Config {
+			cfg: func() ConnectionConfig {
 				cfg := connectionConfig()
 				cfg.User = "nats-user"
 				cfg.Password = "nats-password"
@@ -75,8 +75,8 @@ func TestConnectOptions(t *testing.T) {
 	}
 }
 
-func connectionConfig() *Config {
-	return &Config{
+func connectionConfig() ConnectionConfig {
+	return ConnectionConfig{
 		Name:                "go-nats-wrapper-test",
 		ConnectTimeout:      3 * time.Second,
 		ReconnectAttempts:   3,

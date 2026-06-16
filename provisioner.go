@@ -13,14 +13,14 @@ type Provisioner interface {
 }
 
 type provisioner struct {
-	cfg        *Config
+	cfg        ProvisionerConfig
 	connection *jetStreamConnection
 }
 
-func NewProvisioner(cfg *Config, logger *zap.Logger) (Provisioner, error) {
+func NewProvisioner(cfg ProvisionerConfig, logger *zap.Logger) (Provisioner, error) {
 	ctx := context.Background()
 
-	connection, err := newJetStreamConnection(ctx, cfg, logger)
+	connection, err := newJetStreamConnection(ctx, cfg.JetStream, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -35,48 +35,51 @@ func (p *provisioner) Provision(ctx context.Context) error {
 	requestCtx, cancel := p.connection.operationContext(ctx)
 	defer cancel()
 
-	if err := ensureStream(requestCtx, p.connection.js, p.cfg); err != nil {
-		return err
+	for _, stream := range p.cfg.Streams {
+		if err := ensureStream(requestCtx, p.connection.js, stream.Stream); err != nil {
+			return err
+		}
+
+		if stream.DLQ != nil {
+			if err := ensureStream(requestCtx, p.connection.js, *stream.DLQ); err != nil {
+				return err
+			}
+		}
+
+		for _, consumer := range stream.Consumers {
+			if _, err := ensurePullConsumer(requestCtx, p.connection.js, stream.Stream.Name, consumer); err != nil {
+				return err
+			}
+		}
 	}
 
-	if err := ensureDLQStream(requestCtx, p.connection.js, p.cfg); err != nil {
-		return err
-	}
-
-	_, err := ensurePullConsumer(requestCtx, p.connection.js, p.cfg)
-
-	return err
+	return nil
 }
 
 func (p *provisioner) Close() error {
 	return p.connection.Close()
 }
 
-func ensureStream(ctx context.Context, js jetstream.JetStream, cfg *Config) error {
+func ensureStream(ctx context.Context, js jetstream.JetStream, cfg StreamConfig) error {
 	_, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      cfg.Stream,
-		Subjects:  []string{cfg.Subject},
+		Name:      cfg.Name,
+		Subjects:  cfg.Subjects,
 		Retention: jetstream.WorkQueuePolicy,
 	})
 
 	return err
 }
 
-func ensureDLQStream(ctx context.Context, js jetstream.JetStream, cfg *Config) error {
-	_, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      cfg.DLQStream,
-		Subjects:  []string{cfg.DLQSubject},
-		Retention: jetstream.WorkQueuePolicy,
-	})
-
-	return err
-}
-
-func ensurePullConsumer(ctx context.Context, js jetstream.JetStream, cfg *Config) (jetstream.Consumer, error) {
-	return js.CreateOrUpdateConsumer(ctx, cfg.Stream, jetstream.ConsumerConfig{
-		Durable:    cfg.consumerName(),
+func ensurePullConsumer(
+	ctx context.Context,
+	js jetstream.JetStream,
+	stream string,
+	cfg ConsumerProvisionConfig,
+) (jetstream.Consumer, error) {
+	return js.CreateOrUpdateConsumer(ctx, stream, jetstream.ConsumerConfig{
+		Durable:    cfg.Durable,
 		AckPolicy:  jetstream.AckExplicitPolicy,
 		MaxDeliver: cfg.MaxDeliver,
-		AckWait:    cfg.ackWait(),
+		AckWait:    cfg.AckWait,
 	})
 }
