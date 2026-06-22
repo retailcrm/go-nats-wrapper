@@ -107,6 +107,23 @@ func TestPullConsumerNackDoesNotAcknowledgeMessageWhenDLQPublishFails(t *testing
 	assert.False(t, message.nacked)
 }
 
+func TestPullConsumerNackAcknowledgesMessageWhenDLQIsDisabled(t *testing.T) {
+	consumer := &pullConsumer{
+		cfg: PullConsumerConfig{
+			NakDelay:   time.Minute,
+			MaxDeliver: 3,
+		},
+		logger: zap.NewNop(),
+	}
+	message := newTestNATSMessage(nil, &jetstream.MsgMetadata{NumDelivered: 3})
+
+	err := consumer.Nack(context.Background(), message)
+
+	require.NoError(t, err)
+	assert.True(t, message.acked)
+	assert.False(t, message.nacked)
+}
+
 func TestPullConsumerNackReturnsErrorWhenMessageIsMissing(t *testing.T) {
 	consumer := &pullConsumer{}
 
