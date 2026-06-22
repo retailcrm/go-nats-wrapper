@@ -48,13 +48,18 @@ func NewPullConsumer(cfg PullConsumerConfig, logger *zap.Logger) (PullConsumer, 
 		logger = zap.NewNop()
 	}
 
-	return &pullConsumer{
+	cons := &pullConsumer{
 		cfg:        cfg,
 		connection: connection,
 		consumer:   consumer,
-		publisher:  &streamPublisher{connection: connection},
-		logger:     logger,
-	}, nil
+		logger:     logger.With(zap.String("subsystem", cfg.Consumer)),
+	}
+
+	if cfg.DLQSubject != "" {
+		cons.publisher = &streamPublisher{connection: connection}
+	}
+
+	return cons, nil
 }
 
 func (c *pullConsumer) NextMessage(ctx context.Context) (jetstream.Msg, error) {
@@ -85,15 +90,26 @@ func (c *pullConsumer) Nack(ctx context.Context, message jetstream.Msg) error {
 
 	if meta, err := message.Metadata(); err == nil && meta != nil {
 		if meta.NumDelivered >= uint64(c.cfg.MaxDeliver) {
-			if err = c.publishToDLQ(ctx, message); err != nil {
-				return err
+			c.logger.Debug(
+				"message delivery limit reached",
+				zap.ByteString("message", message.Data()),
+			)
+
+			if c.publisher != nil {
+				c.logger.Warn(
+					"publishing a message to dlq",
+					zap.String("dlq_subject", c.cfg.DLQSubject),
+				)
+
+				if err = c.publishToDLQ(ctx, message); err != nil {
+					return err
+				}
 			}
 
 			c.logger.Warn(
-				"acknowledging a message after publishing it to dlq",
+				"acknowledging a message after reaching the delivery limit",
 				zap.Uint64("num_delivered", meta.NumDelivered),
 				zap.Int("max_deliver", c.cfg.MaxDeliver),
-				zap.String("message", string(message.Data())),
 			)
 
 			return message.Ack()
