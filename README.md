@@ -1,75 +1,76 @@
 # go-nats-wrapper
 
-Переиспользуемые хелперы для NATS Jetstream
+Reusable helpers for NATS JetStream.
 
-## Основные сценарии использования
+## Main Usage Scenarios
 
-Обертка предназначена для сервисов, которые используют NATS JetStream как
-надежную очередь фоновых задач. Типичный сценарий: приложение-клиент публикует
-задачу в stream, а consumer читает ее из очереди и передает дальше - во внешний
-сервис, обработчик бизнес-логики или другой асинхронный процесс.
+The wrapper is intended for services that use NATS JetStream as a reliable
+background task queue. A typical scenario: a client application publishes a task
+to a stream, and a consumer reads it from the queue and passes it further - to an
+external service, business logic handler, or another asynchronous process.
 
-### Provisioning очередей
+### Queue Provisioning
 
-`Provisioner` создает или обновляет JetStream-ресурсы из конфигурации сервиса:
+`Provisioner` creates or updates JetStream resources from the service
+configuration:
 
-* work queue stream с заданными subjects;
-* durable pull consumer для воркеров;
-* отдельный DLQ stream, если для очереди нужна dead letter queue.
+* work queue stream with the specified subjects;
+* durable pull consumer for workers;
+* separate DLQ stream if the queue needs a dead letter queue.
 
-Это позволяет держать описание очередей в конфиге приложения и поднимать NATS
-ресурсы отдельной командой перед запуском API, producers и воркеров.
+This allows queue definitions to be kept in the application config and NATS
+resources to be provisioned with a separate command before starting the API,
+producers, and workers.
 
-### Публикация задач в stream
+### Publishing Tasks to a Stream
 
-`StreamPublisher` публикует payload в subject и возвращает ack JetStream:
-stream, sequence и признак duplicate. Сценарий подходит для API или
-диспетчеров, которым нужно быстро зафиксировать задачу в очереди и не выполнять
-долгую работу синхронно с запросом.
+`StreamPublisher` publishes a payload to a subject and returns a JetStream ack:
+stream, sequence, and the duplicate flag. This scenario fits APIs or dispatchers
+that need to quickly persist a task in the queue and avoid doing long-running
+work synchronously with the request.
 
-Publisher можно использовать, чтобы:
+Publisher can be used to:
 
-* положить входящую команду или событие в subject нужной очереди;
-* разложить одну входящую задачу на несколько внутренних задач для разных
-  обработчиков;
-* передать работу из синхронного процесса в фоновые worker-процессы.
+* put an incoming command or event into the subject of the required queue;
+* split one incoming task into several internal tasks for different handlers;
+* hand off work from a synchronous process to background worker processes.
 
-### Pull-обработка задач воркерами
+### Pull-Based Task Processing by Workers
 
-`PullConsumer` скрывает получение сообщений из durable consumer и дает воркеру
-три базовые операции:
+`PullConsumer` hides message retrieval from a durable consumer and gives the
+worker three basic operations:
 
-* `NextMessage` - забрать следующую задачу;
-* `Ack` - подтвердить успешную обработку;
-* `Nack` - вернуть задачу в очередь с задержкой `NakDelay`.
+* `NextMessage` - receive the next task;
+* `Ack` - acknowledge successful processing;
+* `Nack` - return the task to the queue with a `NakDelay` delay.
 
-Такой сценарий рассчитан на независимые worker-процессы, которые можно
-масштабировать горизонтально. Несколько экземпляров читают один durable
-consumer, а JetStream распределяет задачи между ними.
+This scenario is designed for independent worker processes that can be scaled
+horizontally. Multiple instances read from one durable consumer, and JetStream
+distributes tasks between them.
 
-### Retry и DLQ
+### Retry and DLQ
 
-При `Nack` обертка смотрит metadata сообщения. Пока число доставок меньше
-`MaxDeliver`, сообщение возвращается в очередь через `NakWithDelay`. Когда
-лимит доставок достигнут, сообщение:
+On `Nack`, the wrapper checks the message metadata. While the delivery count is
+less than `MaxDeliver`, the message is returned to the queue with
+`NakWithDelay`. When the delivery limit is reached, the message:
 
-* публикуется в `DLQSubject`, если он настроен;
-* подтверждается через `Ack`, чтобы оно не зацикливалось в основной очереди.
+* is published to `DLQSubject`, if it is configured;
+* is acknowledged with `Ack` so it does not loop in the main queue.
 
-Если DLQ не настроен, сообщение после достижения `MaxDeliver` просто
-подтверждается. Если публикация в DLQ завершилась ошибкой, исходное сообщение не
-ack-ается, чтобы потеря задачи не была скрыта.
+If DLQ is not configured, the message is simply acknowledged after reaching
+`MaxDeliver`. If publishing to DLQ fails, the original message is not acked so
+that task loss is not hidden.
 
-### Управление соединением
+### Connection Management
 
-Все компоненты используют общую настройку JetStream-соединения: имя клиента,
-таймаут подключения, reconnect-политику, размер reconnect buffer, user/password
-и TLS-файлы. Для долгоживущих воркеров можно передать `OnClosed`: callback
-вызывается после закрытия установленного соединения, если reconnect не помог.
-В приложении это удобно использовать как fatal-сигнал для supervisor или
-error-observer.
+All components use the same JetStream connection configuration: client name,
+connection timeout, reconnect policy, reconnect buffer size, user/password, and
+TLS files. For long-running workers, `OnClosed` can be provided: the callback is
+called after an established connection is closed if reconnect did not help. In
+the application, this is convenient to use as a fatal signal for a supervisor or
+error observer.
 
-## Примеры использования
+## Usage Examples
 
 ```go
 connection := natswrapper.ConnectionConfig{
