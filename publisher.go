@@ -2,23 +2,16 @@ package natswrapper
 
 import (
 	"context"
-	"errors"
 
+	natsdriver "github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"go.uber.org/zap"
 )
 
-var errSubjectRequired = errors.New("nats subject is required")
-
 type StreamPublisher interface {
-	Publish(ctx context.Context, subject string, payload []byte, opts ...jetstream.PublishOpt) (*PublishResult, error)
+	Publish(ctx context.Context, subject string, payload []byte, opts ...jetstream.PublishOpt) (*jetstream.PubAck, error)
+	PublishMsg(ctx context.Context, message *natsdriver.Msg, opts ...jetstream.PublishOpt) (*jetstream.PubAck, error)
 	Close() error
-}
-
-type PublishResult struct {
-	Stream    string
-	Sequence  uint64
-	Duplicate bool
 }
 
 type streamPublisher struct {
@@ -43,9 +36,9 @@ func (p *streamPublisher) Publish(
 	subject string,
 	payload []byte,
 	opts ...jetstream.PublishOpt,
-) (*PublishResult, error) {
+) (*jetstream.PubAck, error) {
 	if subject == "" {
-		return nil, errSubjectRequired
+		return nil, ErrSubjectRequired
 	}
 
 	requestCtx, cancel := p.connection.operationContext(ctx)
@@ -56,11 +49,30 @@ func (p *streamPublisher) Publish(
 		return nil, err
 	}
 
-	return &PublishResult{
-		Stream:    ack.Stream,
-		Sequence:  ack.Sequence,
-		Duplicate: ack.Duplicate,
-	}, nil
+	return ack, nil
+}
+
+func (p *streamPublisher) PublishMsg(
+	ctx context.Context,
+	message *natsdriver.Msg,
+	opts ...jetstream.PublishOpt,
+) (*jetstream.PubAck, error) {
+	if message == nil {
+		return nil, ErrMessageRequired
+	}
+	if message.Subject == "" {
+		return nil, ErrSubjectRequired
+	}
+
+	requestCtx, cancel := p.connection.operationContext(ctx)
+	defer cancel()
+
+	ack, err := p.connection.js.PublishMsg(requestCtx, message, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	return ack, nil
 }
 
 func (p *streamPublisher) Close() error {
