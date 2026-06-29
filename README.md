@@ -35,6 +35,13 @@ Publisher can be used to:
 * split one incoming task into several internal tasks for different handlers;
 * hand off work from a synchronous process to background worker processes.
 
+If the message needs NATS headers, use `PublishMsg`. JetStream publish options
+can still be passed together with custom headers.
+
+Tests in downstream services can use mocks from
+`github.com/retailcrm/go-nats-wrapper/natstest`: `MockStreamPublisher`,
+`MockPullConsumer`, and `MockMessage`.
+
 ### Pull-Based Task Processing by Workers
 
 `PullConsumer` hides message retrieval from a durable consumer and gives the
@@ -131,6 +138,17 @@ if err != nil {
 defer publisher.Close()
 
 _, err = publisher.Publish(ctx, "service-name.tasks", payload)
+
+_, err = publisher.PublishMsg(
+	ctx,
+	&nats.Msg{
+		Subject: "service-name.tasks",
+		Data:    payload,
+		Header: nats.Header{
+			"X-Request-Id": []string{requestID},
+		},
+	},
+)
 
 consumer, err := natswrapper.NewPullConsumer(natswrapper.PullConsumerConfig{
 	JetStream:  jetStream,

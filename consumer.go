@@ -2,13 +2,10 @@ package natswrapper
 
 import (
 	"context"
-	"errors"
 
 	"github.com/nats-io/nats.go/jetstream"
 	"go.uber.org/zap"
 )
-
-var errMessageRequired = errors.New("nats message is required")
 
 type PullConsumer interface {
 	NextMessage(ctx context.Context) (jetstream.Msg, error)
@@ -77,7 +74,7 @@ func (c *pullConsumer) NextMessage(ctx context.Context) (jetstream.Msg, error) {
 
 func (c *pullConsumer) Ack(_ context.Context, message jetstream.Msg) error {
 	if message == nil {
-		return errMessageRequired
+		return ErrMessageRequired
 	}
 
 	return message.Ack()
@@ -85,7 +82,7 @@ func (c *pullConsumer) Ack(_ context.Context, message jetstream.Msg) error {
 
 func (c *pullConsumer) Nack(ctx context.Context, message jetstream.Msg) error {
 	if message == nil {
-		return errMessageRequired
+		return ErrMessageRequired
 	}
 
 	if meta, err := message.Metadata(); err == nil && meta != nil {
