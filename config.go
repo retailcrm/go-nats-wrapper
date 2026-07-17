@@ -26,6 +26,7 @@ type JetStreamConfig struct {
 type StreamConfig struct {
 	Name     string
 	Subjects []string
+	Replicas int
 }
 
 type PullConsumerConfig struct {

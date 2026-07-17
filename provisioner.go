@@ -65,6 +65,7 @@ func ensureStream(ctx context.Context, js jetstream.JetStream, cfg StreamConfig)
 		Name:      cfg.Name,
 		Subjects:  cfg.Subjects,
 		Retention: jetstream.WorkQueuePolicy,
+		Replicas:  cfg.Replicas,
 	})
 
 	return err
