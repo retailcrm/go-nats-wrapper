@@ -30,12 +30,13 @@ type StreamConfig struct {
 }
 
 type PullConsumerConfig struct {
-	JetStream  JetStreamConfig
-	Stream     string
-	Consumer   string
-	DLQSubject string
-	NakDelay   time.Duration
-	MaxDeliver int
+	JetStream       JetStreamConfig
+	Stream          string
+	Consumer        string
+	DLQSubject      string
+	NakDelay        time.Duration
+	MaxDeliver      int
+	PullMaxMessages int
 }
 
 type StreamPublisherConfig struct {
