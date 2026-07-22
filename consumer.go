@@ -61,7 +61,7 @@ func NewPullConsumer(cfg PullConsumerConfig, logger *zap.Logger) (PullConsumer, 
 
 func (c *pullConsumer) NextMessage(ctx context.Context) (jetstream.Msg, error) {
 	if c.messages == nil {
-		messages, err := c.consumer.Messages()
+		messages, err := c.consumer.Messages(jetstream.PullMaxMessages(c.cfg.PullMaxMessages))
 		if err != nil {
 			return nil, err
 		}

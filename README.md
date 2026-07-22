@@ -151,11 +151,12 @@ _, err = publisher.PublishMsg(
 )
 
 consumer, err := natswrapper.NewPullConsumer(natswrapper.PullConsumerConfig{
-	JetStream:  jetStream,
-	Stream:     "SERVICE_NAME_TASKS",
-	Consumer:   "SERVICE_NAME_TASKS",
-	DLQSubject: "service-name.tasks.dlq",
-	NakDelay:   30 * time.Second,
-	MaxDeliver: 3,
+	JetStream:       jetStream,
+	Stream:          "SERVICE_NAME_TASKS",
+	Consumer:        "SERVICE_NAME_TASKS",
+	DLQSubject:      "service-name.tasks.dlq",
+	NakDelay:        30 * time.Second,
+	MaxDeliver:      3,
+	PullMaxMessages: 100,
 }, logger)
 ```
