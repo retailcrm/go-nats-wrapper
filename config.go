@@ -27,6 +27,7 @@ type StreamConfig struct {
 	Name     string
 	Subjects []string
 	Replicas int
+	MaxAge   time.Duration
 }
 
 type PullConsumerConfig struct {
@@ -35,6 +36,7 @@ type PullConsumerConfig struct {
 	Consumer        string
 	DLQSubject      string
 	NakDelay        time.Duration
+	NakDelayJitter  time.Duration
 	MaxDeliver      int
 	PullMaxMessages int
 }

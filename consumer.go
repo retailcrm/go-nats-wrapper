@@ -2,6 +2,8 @@ package natswrapper
 
 import (
 	"context"
+	"math/rand/v2"
+	"time"
 
 	"github.com/nats-io/nats.go/jetstream"
 	"go.uber.org/zap"
@@ -113,7 +115,17 @@ func (c *pullConsumer) Nack(ctx context.Context, message jetstream.Msg) error {
 		}
 	}
 
-	return message.NakWithDelay(c.cfg.NakDelay)
+	return message.NakWithDelay(c.nakDelay())
+}
+
+func (c *pullConsumer) nakDelay() time.Duration {
+	if c.cfg.NakDelayJitter <= 0 {
+		return c.cfg.NakDelay
+	}
+
+	jitter := time.Duration(rand.Int64N(int64(c.cfg.NakDelayJitter) + 1))
+
+	return c.cfg.NakDelay + jitter
 }
 
 func (c *pullConsumer) publishToDLQ(ctx context.Context, message jetstream.Msg) error {

@@ -59,7 +59,9 @@ distributes tasks between them.
 
 On `Nack`, the wrapper checks the message metadata. While the delivery count is
 less than `MaxDeliver`, the message is returned to the queue with
-`NakWithDelay`. When the delivery limit is reached, the message:
+`NakWithDelay`. The delay is `NakDelay` plus a random duration from zero through
+`NakDelayJitter`, inclusive. Leave `NakDelayJitter` at zero to disable the
+random addition. When the delivery limit is reached, the message:
 
 * is published to `DLQSubject`, if it is configured;
 * is acknowledged with `Ack` so it does not loop in the main queue.
@@ -67,6 +69,9 @@ less than `MaxDeliver`, the message is returned to the queue with
 If DLQ is not configured, the message is simply acknowledged after reaching
 `MaxDeliver`. If publishing to DLQ fails, the original message is not acked so
 that task loss is not hidden.
+
+Set `MaxAge` in the DLQ stream configuration to automatically remove messages
+after the specified duration. Its zero value leaves message expiration disabled.
 
 ### Connection Management
 
@@ -109,6 +114,7 @@ provisioner, err := natswrapper.NewProvisioner(natswrapper.ProvisionerConfig{
 			DLQ: &natswrapper.StreamConfig{
 				Name:     "SERVICE_NAME_TASKS_DLQ",
 				Subjects: []string{"service-name.tasks.dlq"},
+				MaxAge:   7 * 24 * time.Hour,
 			},
 			Consumers: []natswrapper.ConsumerProvisionConfig{
 				{
@@ -151,12 +157,13 @@ _, err = publisher.PublishMsg(
 )
 
 consumer, err := natswrapper.NewPullConsumer(natswrapper.PullConsumerConfig{
-	JetStream:       jetStream,
-	Stream:          "SERVICE_NAME_TASKS",
-	Consumer:        "SERVICE_NAME_TASKS",
-	DLQSubject:      "service-name.tasks.dlq",
-	NakDelay:        30 * time.Second,
-	MaxDeliver:      3,
-	PullMaxMessages: 100,
+	JetStream:                jetStream,
+	Stream:                   "SERVICE_NAME_TASKS",
+	Consumer:                 "SERVICE_NAME_TASKS",
+	DLQSubject:               "service-name.tasks.dlq",
+	NakDelay:                 30 * time.Second,
+	NakDelayJitter:           time.Minute,
+	MaxDeliver:               3,
+	PullMaxMessages:          100,
 }, logger)
 ```

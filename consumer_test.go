@@ -31,6 +31,18 @@ func TestPullConsumerNack(t *testing.T) {
 			},
 		},
 		{
+			name: "adds random delay when configured",
+			setup: func(consumer *pullConsumer, message *natstest.MockMessage, _ *natstest.MockStreamPublisher) jetstream.Msg {
+				consumer.cfg.NakDelayJitter = time.Minute
+				message.On("Metadata").Return(&jetstream.MsgMetadata{NumDelivered: 2}, nil).Once()
+				message.On("NakWithDelay", mock.MatchedBy(func(delay time.Duration) bool {
+					return delay >= time.Minute && delay <= 2*time.Minute
+				})).Return(nil).Once()
+
+				return message
+			},
+		},
+		{
 			name: "publishes message to dlq and acknowledges it when delivery limit has been reached",
 			setup: func(_ *pullConsumer, message *natstest.MockMessage, publisher *natstest.MockStreamPublisher) jetstream.Msg {
 				payload := []byte(`{"id":1}`)
