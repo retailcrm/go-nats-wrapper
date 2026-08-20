@@ -68,6 +68,9 @@ If DLQ is not configured, the message is simply acknowledged after reaching
 `MaxDeliver`. If publishing to DLQ fails, the original message is not acked so
 that task loss is not hidden.
 
+Set `MaxAge` in the DLQ stream configuration to automatically remove messages
+after the specified duration. Its zero value leaves message expiration disabled.
+
 ### Connection Management
 
 All components use the same JetStream connection configuration: client name,
@@ -109,6 +112,7 @@ provisioner, err := natswrapper.NewProvisioner(natswrapper.ProvisionerConfig{
 			DLQ: &natswrapper.StreamConfig{
 				Name:     "SERVICE_NAME_TASKS_DLQ",
 				Subjects: []string{"service-name.tasks.dlq"},
+				MaxAge:   7 * 24 * time.Hour,
 			},
 			Consumers: []natswrapper.ConsumerProvisionConfig{
 				{

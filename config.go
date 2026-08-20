@@ -27,6 +27,7 @@ type StreamConfig struct {
 	Name     string
 	Subjects []string
 	Replicas int
+	MaxAge   time.Duration
 }
 
 type PullConsumerConfig struct {
