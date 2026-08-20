@@ -59,7 +59,9 @@ distributes tasks between them.
 
 On `Nack`, the wrapper checks the message metadata. While the delivery count is
 less than `MaxDeliver`, the message is returned to the queue with
-`NakWithDelay`. When the delivery limit is reached, the message:
+`NakWithDelay`. The delay is `NakDelay` plus a random duration from zero through
+`NakDelayJitter`, inclusive. Leave `NakDelayJitter` at zero to disable the
+random addition. When the delivery limit is reached, the message:
 
 * is published to `DLQSubject`, if it is configured;
 * is acknowledged with `Ack` so it does not loop in the main queue.
@@ -155,12 +157,13 @@ _, err = publisher.PublishMsg(
 )
 
 consumer, err := natswrapper.NewPullConsumer(natswrapper.PullConsumerConfig{
-	JetStream:       jetStream,
-	Stream:          "SERVICE_NAME_TASKS",
-	Consumer:        "SERVICE_NAME_TASKS",
-	DLQSubject:      "service-name.tasks.dlq",
-	NakDelay:        30 * time.Second,
-	MaxDeliver:      3,
-	PullMaxMessages: 100,
+	JetStream:                jetStream,
+	Stream:                   "SERVICE_NAME_TASKS",
+	Consumer:                 "SERVICE_NAME_TASKS",
+	DLQSubject:               "service-name.tasks.dlq",
+	NakDelay:                 30 * time.Second,
+	NakDelayJitter:           time.Minute,
+	MaxDeliver:               3,
+	PullMaxMessages:          100,
 }, logger)
 ```

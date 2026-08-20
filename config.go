@@ -36,6 +36,7 @@ type PullConsumerConfig struct {
 	Consumer        string
 	DLQSubject      string
 	NakDelay        time.Duration
+	NakDelayJitter  time.Duration
 	MaxDeliver      int
 	PullMaxMessages int
 }
